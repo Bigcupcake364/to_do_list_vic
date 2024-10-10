@@ -1,0 +1,142 @@
+.titulo {
+    padding-left: 10px;
+    padding-top: 10px;
+    font-size: 50px;
+    font-family: "Helvetica", cursive;
+    text-align: start;
+    background-color: black;
+    border-bottom-left-radius: 10px;
+    border-bottom-right-radius: 10px;
+}
+.lista {
+    padding-left: 15%;
+    padding-top: 10%;
+}
+
+.formInput {
+    color: black;
+}
+
+.container {
+    padding: 20px;
+}
+
+.authContainer {
+    max-width: 400px;
+    margin: 0 auto;
+}
+
+.authToggle {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 20px;
+}
+
+.authForm {
+    background-color: #f5f5f5;
+    padding: 20px;
+    border-radius: 8px;
+}
+
+.authTitle {
+    font-size: 20px;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.formGroup {
+    margin-bottom: 15px;
+}
+
+.formGroup label {
+    display: block;
+    margin-bottom: 5px;
+}
+
+.input {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+.button {
+    width: 100%;
+    padding: 10px;
+    background-color: #0070f3;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.button:hover {
+    background-color: #0060df;
+}
+
+.button:disabled {
+    background-color: #cccccc;
+    cursor: not-allowed;
+}
+
+.buttonOutline {
+    background-color: transparent;
+    color: #0070f3;
+    border: 1px solid #0070f3;
+}
+
+.buttonOutline:hover {
+    background-color: #f0f0f0;
+}
+
+.errorMessage {
+    color: red;
+    margin-bottom: 10px;
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+/* ... (previous styles) ... */
+
+.taskListContainer {
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.taskListTitle {
+    font-size: 24px;
+    margin-bottom: 20px;
+}
+
+.taskList {
+    list-style-type: none;
+    padding: 0;
+}
+
+.taskItem {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+    border-bottom: 1px solid #eee;
+}
+
+.taskCompleted {
+    text-decoration: line-through;
+    color: #888;
+}
+
+.addTaskForm {
+    margin-top: 20px;
+    display: flex;
+    gap: 10px;
+}
+
+.addTaskForm input {
+    flex-grow: 1;
+}

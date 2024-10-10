@@ -1,0 +1,36 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  user_id    Int         @id @unique(map: "user_id") @default(autoincrement())
+  username   String      @unique @db.VarChar(200)
+  nickname   String      @db.VarChar(200)
+  password   String      @db.VarChar(200)
+  workspaces Workspace[]
+}
+
+model Workspace {
+  workspace_id   Int    @id @unique(map: "workspace_id") @default(autoincrement())
+  workspace_name String @db.VarChar(100)
+  user_user_id   Int
+  tasks          Task[]
+  user           User   @relation(fields: [user_user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "workspace_user_user_id_fk")
+
+  @@index([user_user_id], map: "workspace_user_user_id_fk")
+}
+
+model Task {
+  task_id                BigInt    @id @unique(map: "task_id") @default(autoincrement()) @db.UnsignedBigInt
+  task_name              String    @db.VarChar(200)
+  task_is_complete       Boolean
+  workspace_workspace_id Int
+  workspace              Workspace @relation(fields: [workspace_workspace_id], references: [workspace_id], onDelete: NoAction, onUpdate: NoAction, map: "task_workspace_workspace_id_fk")
+
+  @@index([workspace_workspace_id], map: "task_workspace_workspace_id_fk")
+}
