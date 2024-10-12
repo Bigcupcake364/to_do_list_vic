@@ -1,56 +1,43 @@
-import { NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
-import bcrypt from 'bcrypt';
-import jwt from 'jsonwebtoken';
+import { NextResponse } from 'next/server'
+import { PrismaClient } from '@prisma/client'
+import bcrypt from 'bcrypt'
 
-const prisma = new PrismaClient();
+const prisma = new PrismaClient()
 
 export async function POST(request: Request) {
     try {
-        const { username, password, nickname } = await request.json();
-
-        if (!username || !password || !nickname) {
-            return NextResponse.json({ error: 'All fields are required' }, { status: 400 });
-        }
+        const { username, nickname, password } = await request.json()
 
         const existingUser = await prisma.user.findUnique({
             where: { username },
-        });
+        })
 
         if (existingUser) {
-            return NextResponse.json({ error: 'Username already exists' }, { status: 400 });
+            return NextResponse.json({ message: 'Username already exists' }, { status: 400 })
         }
 
-        const hashedPassword = await bcrypt.hash(password, 10);
+        const hashedPassword = await bcrypt.hash(password, 10)
 
-        const newUser = await prisma.user.create({
+        const user = await prisma.user.create({
             data: {
                 username,
                 nickname,
                 password: hashedPassword,
+                workspaces: {
+                    create: [{ workspace_name: 'Default Workspace' }]
+                }
             },
-        });
+            include: { workspaces: true },
+        })
 
-        // Generate JWT token
-        const token = jwt.sign(
-            { userId: newUser.user_id, username: newUser.username },
-            process.env.JWT_SECRET!,
-            { expiresIn: '1h' }
-        );
-
-        // Return success response with token
         return NextResponse.json({
-            message: 'User registered successfully',
-            token,
-            user: {
-                id: newUser.user_id,
-                username: newUser.username,
-                nickname: newUser.nickname
-            }
-        }, { status: 201 });
-
+            message: 'User created successfully',
+            userId: user.user_id,
+            nickname: user.nickname,
+            workspaces: user.workspaces,
+        })
     } catch (error) {
-        console.error('Registration error:', error);
-        return NextResponse.json({ error: 'An error occurred during registration' }, { status: 500 });
+        console.error('Error processing registration:', error)
+        return NextResponse.json({ message: 'An error occurred' }, { status: 500 })
     }
 }

@@ -1,94 +1,85 @@
-"use client";
+'use client'
 
-import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import styles from '../ui/home.module.css';
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 
 interface RegisterProps {
-    setIsLoggedIn: React.Dispatch<React.SetStateAction<boolean>>;
+    setIsLoggedIn: (value: boolean) => void
+    setUserData: (data: any) => void
 }
 
-const Register: React.FC<RegisterProps> = ({ setIsLoggedIn }) => {
-    const [username, setUsername] = useState('');
-    const [password, setPassword] = useState('');
-    const [nickname, setNickname] = useState('');
-    const [error, setError] = useState('');
-    const [isLoading, setIsLoading] = useState(false);
-    const router = useRouter();
+export default function Register({ setIsLoggedIn, setUserData }: RegisterProps) {
+    const [username, setUsername] = useState('')
+    const [nickname, setNickname] = useState('')
+    const [password, setPassword] = useState('')
+    const [error, setError] = useState('')
+    const router = useRouter()
 
-    const handleRegister = async (e: React.FormEvent<HTMLFormElement>) => {
-        e.preventDefault();
-        setIsLoading(true);
-        setError('');
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault()
+        setError('')
 
         try {
             const response = await fetch('/api/register', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ username, password, nickname }),
-            });
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, nickname, password }),
+            })
 
             if (response.ok) {
-                const data = await response.json();
-                localStorage.setItem('token', data.token);
-                setIsLoggedIn(true);
-                router.push('/');
+                const data = await response.json()
+                localStorage.setItem('userId', data.userId.toString())
+                localStorage.setItem('nickname', data.nickname)
+                localStorage.setItem('workspaces', JSON.stringify(data.workspaces))
+                setUserData(data)
+                setIsLoggedIn(true)
+                router.push('/')
             } else {
-                const errorData = await response.json();
-                setError(errorData.message || 'Ocorreu um erro ao fazer o cadastro.');
+                const errorData = await response.json()
+                setError(errorData.message || 'Registration failed')
             }
         } catch (error) {
-            setError('Ocorreu um erro ao conectar com o servidor.');
-        } finally {
-            setIsLoading(false);
+            setError('An error occurred. Please try again.')
         }
-    };
+    }
 
     return (
-        <div className={styles.authForm}>
-            <h2 className={styles.authTitle}>Cadastro</h2>
-            <form onSubmit={handleRegister}>
-                <div className={styles.formGroup}>
-                    <label htmlFor="username">Nome de Usuário</label>
-                    <Input
-                        type="text"
-                        id="username"
-                        value={username}
-                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setUsername(e.target.value)}
-                        required
-                    />
-                </div>
-                <div className={styles.formGroup}>
-                    <label htmlFor="nickname">Apelido</label>
-                    <Input
-                        type="text"
-                        id="nickname"
-                        value={nickname}
-                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNickname(e.target.value)}
-                        required
-                    />
-                </div>
-                <div className={styles.formGroup}>
-                    <label htmlFor="password">Senha</label>
-                    <Input
-                        type="password"
-                        id="password"
-                        value={password}
-                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
-                        required
-                    />
-                </div>
-                {error && <p className={styles.errorMessage}>{error}</p>}
-                <Button type="submit" disabled={isLoading}>
-                    {isLoading ? 'Cadastrando...' : 'Cadastrar'}
-                </Button>
-            </form>
-        </div>
-    );
-};
-
-export default Register;
+        <form onSubmit={handleSubmit} className="space-y-4 bg-gray-900 p-4">
+            <h1 className={"text-white"}>Create your account:</h1>
+            <div className={"text-white"}>
+                <label htmlFor="username" className="block text-sm font-medium text-gray-400">Username</label>
+                <Input
+                    type="text"
+                    id="username"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    required
+                />
+            </div>
+            <div>
+                <label htmlFor="nickname" className="block text-sm font-medium text-gray-400">Nickname</label>
+                <Input
+                    type="text"
+                    id="nickname"
+                    value={nickname}
+                    onChange={(e) => setNickname(e.target.value)}
+                    required
+                />
+            </div>
+            <div>
+                <label htmlFor="password" className="block text-sm font-medium text-gray-400">Password</label>
+                <Input
+                    type="password"
+                    id="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                />
+            </div>
+            {error && <p className="text-red-500">{error}</p>}
+            <Button type="submit" className={"bg-gray-700"}>Register</Button>
+        </form>
+    )
+}

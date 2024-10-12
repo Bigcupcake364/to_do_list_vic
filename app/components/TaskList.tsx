@@ -1,173 +1,231 @@
 'use client'
 
-import React, { useEffect, useState } from 'react'
-import { useSession } from "next-auth/react"
+import { useState, useEffect } from 'react'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { useToast } from "@/hooks/use-toast"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
 
 interface Task {
-    task_id: number
+    task_id: string // Changed from bigint to string
     task_name: string
     task_is_complete: boolean
+    workspace_workspace_id: number
+}
+
+interface Workspace {
+    workspace_id: number
+    workspace_name: string
 }
 
 export default function TaskList() {
     const [tasks, setTasks] = useState<Task[]>([])
-    const [newTaskName, setNewTaskName] = useState('')
-    const [isLoading, setIsLoading] = useState(false)
-    const { toast } = useToast()
-    const { data: session, status } = useSession()
+    const [newTask, setNewTask] = useState('')
+    const [workspaces, setWorkspaces] = useState<Workspace[]>([])
+    const [selectedWorkspace, setSelectedWorkspace] = useState<number | null>(null)
+    const [newWorkspaceName, setNewWorkspaceName] = useState('')
+    const [isDialogOpen, setIsDialogOpen] = useState(false)
 
-    const fetchTasks = async () => {
-        if (!session) return
-        setIsLoading(true)
+    useEffect(() => {
+        fetchWorkspaces()
+    }, [])
+
+    useEffect(() => {
+        if (selectedWorkspace) {
+            fetchTasks()
+        }
+    }, [selectedWorkspace])
+
+    const fetchWorkspaces = async () => {
+        const userId = localStorage.getItem('userId')
+        if (!userId) return
+
         try {
-            const response = await fetch('/api/tasks', {
-                headers: {
-                    'Authorization': `Bearer ${session.accessToken || ''}`
+            const response = await fetch(`/api/workspaces?userId=${userId}`)
+            if (response.ok) {
+                const data = await response.json()
+                setWorkspaces(data)
+                if (data.length > 0 && !selectedWorkspace) {
+                    setSelectedWorkspace(data[0].workspace_id)
                 }
-            })
-            if (!response.ok) {
-                throw new Error('Failed to fetch tasks')
             }
-            const data: Task[] = await response.json()
-            setTasks(data)
         } catch (error) {
-            console.error('Error fetching tasks:', error)
-            toast({
-                title: "Error",
-                description: "Failed to fetch tasks. Please try again.",
-                variant: "destructive",
-            })
-        } finally {
-            setIsLoading(false)
+            console.error('Failed to fetch workspaces:', error)
         }
     }
 
-    const handleAddTask = async (e: React.FormEvent<HTMLFormElement>) => {
+    const fetchTasks = async () => {
+        if (!selectedWorkspace) return
+
+        try {
+            const response = await fetch(`/api/tasks?workspaceId=${selectedWorkspace}`)
+            if (response.ok) {
+                const data = await response.json()
+                setTasks(data)
+            }
+        } catch (error) {
+            console.error('Failed to fetch tasks:', error)
+        }
+    }
+
+    const addTask = async (e: React.FormEvent) => {
         e.preventDefault()
-        if (!session) return
-        setIsLoading(true)
+        if (!selectedWorkspace || !newTask.trim()) return
+
         try {
             const response = await fetch('/api/tasks', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${session.accessToken || ''}`
-                },
-                body: JSON.stringify({ task_name: newTaskName }),
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ workspaceId: selectedWorkspace, taskName: newTask }),
             })
 
-            if (!response.ok) {
-                throw new Error('Failed to add task')
+            if (response.ok) {
+                const task = await response.json()
+                setTasks([...tasks, task])
+                setNewTask('')
             }
-
-            const addedTask: Task = await response.json()
-            setTasks(prevTasks => [...prevTasks, addedTask])
-            setNewTaskName('')
-            toast({
-                title: "Success",
-                description: "Task added successfully.",
-            })
         } catch (error) {
-            console.error('Error adding task:', error)
-            toast({
-                title: "Error",
-                description: "Failed to add task. Please try again.",
-                variant: "destructive",
-            })
-        } finally {
-            setIsLoading(false)
+            console.error('Failed to add task:', error)
         }
     }
 
-    const handleToggleComplete = async (taskId: number) => {
-        if (!session) return
-        setIsLoading(true)
+    const toggleTask = async (taskId: string) => {
+        if (!selectedWorkspace) return
+
         try {
-            const taskToUpdate = tasks.find(t => t.task_id === taskId)
-            if (!taskToUpdate) throw new Error('Task not found')
+            const task = tasks.find(t => t.task_id === taskId)
+            if (!task) return
 
             const response = await fetch(`/api/tasks/${taskId}`, {
-                method: 'PATCH',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${session.accessToken || ''}`
-                },
-                body: JSON.stringify({ task_is_complete: !taskToUpdate.task_is_complete }),
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ workspaceId: selectedWorkspace, isComplete: !task.task_is_complete }),
             })
 
-            if (!response.ok) {
-                throw new Error('Failed to update task')
+            if (response.ok) {
+                setTasks(tasks.map(task =>
+                    task.task_id === taskId ? { ...task, task_is_complete: !task.task_is_complete } : task
+                ))
             }
-
-            const updatedTask: Task = await response.json()
-            setTasks(prevTasks => prevTasks.map(task =>
-                task.task_id === updatedTask.task_id ? updatedTask : task
-            ))
-            toast({
-                title: "Success",
-                description: `Task marked as ${updatedTask.task_is_complete ? 'complete' : 'incomplete'}.`,
-            })
         } catch (error) {
-            console.error('Error updating task:', error)
-            toast({
-                title: "Error",
-                description: "Failed to update task. Please try again.",
-                variant: "destructive",
+            console.error('Failed to update task:', error)
+        }
+    }
+
+    const deleteTask = async (taskId: string) => {
+        if (!selectedWorkspace) return
+
+        try {
+            const response = await fetch(`/api/tasks/${taskId}`, {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ workspaceId: selectedWorkspace }),
             })
-        } finally {
-            setIsLoading(false)
+
+            if (response.ok) {
+                setTasks(tasks.filter(task => task.task_id !== taskId))
+            }
+        } catch (error) {
+            console.error('Failed to delete task:', error)
         }
     }
 
-    useEffect(() => {
-        if (session) {
-            fetchTasks()
+    const createWorkspace = async () => {
+        const userId = localStorage.getItem('userId')
+        if (!userId || !newWorkspaceName.trim()) return
+
+        try {
+            const response = await fetch('/api/workspaces', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId, workspaceName: newWorkspaceName }),
+            })
+
+            if (response.ok) {
+                const workspace = await response.json()
+                setWorkspaces([...workspaces, workspace])
+                setSelectedWorkspace(workspace.workspace_id)
+                setNewWorkspaceName('')
+                setIsDialogOpen(false)
+            }
+        } catch (error) {
+            console.error('Failed to create workspace:', error)
         }
-    }, [session])
-
-    if (status === "loading") {
-        return <div>Loading...</div>
-    }
-
-    if (status === "unauthenticated") {
-        return <div>Please sign in to view your tasks.</div>
     }
 
     return (
-        <div className="max-w-md mx-auto mt-8 p-6 bg-white rounded-lg shadow-md">
-            <h1 className="text-2xl font-bold mb-6 text-center">Your Tasks</h1>
-            {isLoading ? (
-                <div className="text-center">Loading tasks...</div>
-            ) : (
-                <ul className="space-y-4">
-                    {tasks.map(task => (
-                        <li key={task.task_id} className="flex items-center justify-between p-3 bg-gray-100 rounded">
-                            <span className={task.task_is_complete ? "line-through text-gray-500" : ""}>{task.task_name}</span>
-                            <Button
-                                onClick={() => handleToggleComplete(task.task_id)}
-                                variant={task.task_is_complete ? "outline" : "default"}
-                                size="sm"
-                            >
-                                {task.task_is_complete ? 'Undo' : 'Complete'}
-                            </Button>
-                        </li>
-                    ))}
-                </ul>
-            )}
-            <form onSubmit={handleAddTask} className="mt-6 flex space-x-2">
+        <div className="space-y-4 bg-gray-950 text-white p-4 min-w-max ">
+            <div className="flex justify-between items-center">
+                <Select
+                    value={selectedWorkspace?.toString()}
+                    onValueChange={(value) => setSelectedWorkspace(parseInt(value))}
+                >
+                    <SelectTrigger className="w-[200px]">
+                        <SelectValue placeholder="Select a workspace" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {workspaces.map((workspace) => (
+                            <SelectItem key={workspace.workspace_id} value={workspace.workspace_id.toString()}>
+                                {workspace.workspace_name}
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+                <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                    <DialogTrigger asChild>
+                        <Button variant="outline" className="text-white">Create Workspace</Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-[425px]">
+                        <DialogHeader>
+                            <DialogTitle>Create New Workspace</DialogTitle>
+                        </DialogHeader>
+                        <div className="grid gap-4 py-4">
+                            <div className="grid grid-cols-4 items-center gap-4">
+                                <Label htmlFor="name" className="text-right">
+                                    Name
+                                </Label>
+                                <Input
+                                    id="name"
+                                    value={newWorkspaceName}
+                                    onChange={(e) => setNewWorkspaceName(e.target.value)}
+                                    className="col-span-3"
+                                />
+                            </div>
+                        </div>
+                        <Button onClick={createWorkspace}>Create Workspace</Button>
+                    </DialogContent>
+                </Dialog>
+            </div>
+            <form onSubmit={addTask} className="flex space-x-2">
                 <Input
                     type="text"
-                    placeholder="New task name"
-                    value={newTaskName}
-                    onChange={(e) => setNewTaskName(e.target.value)}
-                    required
+                    value={newTask}
+                    onChange={(e) => setNewTask(e.target.value)}
+                    placeholder="Add a new task"
                     className="flex-grow"
                 />
-                <Button type="submit" disabled={isLoading}>Add Task</Button>
+                <Button type="submit">Add Task</Button>
             </form>
+            <ul className="space-y-2">
+                {tasks.map(task => (
+                    <li key={task.task_id} className="flex items-center space-x-2">
+                        <Checkbox
+                            checked={task.task_is_complete}
+                            onCheckedChange={() => toggleTask(task.task_id)}
+                            id={`task-${task.task_id}`}
+                        />
+                        <label
+                            htmlFor={`task-${task.task_id}`}
+                            className={`flex-grow ${task.task_is_complete ? 'line-through text-gray-500' : ''}`}
+                        >
+                            {task.task_name}
+                        </label>
+                        <Button onClick={() => deleteTask(task.task_id)} variant="destructive" size="sm">Delete</Button>
+                    </li>
+                ))}
+            </ul>
         </div>
     )
 }

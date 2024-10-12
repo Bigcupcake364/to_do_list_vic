@@ -140,3 +140,11 @@
 .addTaskForm input {
     flex-grow: 1;
 }
+
+.header {
+    background-color: black;
+}
+
+.logoutButton {
+    margin-left: 100px;
+}
